@@ -13,7 +13,7 @@ class EmacsMac < Formula
   option "with-rsvg", "Build with rsvg support"
   option "with-ctags", "Don't remove the ctags executable that emacs provides"
   option "with-no-title-bars", "Build with a patch for no title bars on frames (--HEAD is not supported)"
-  option "with-natural-title-bar", 
+  option "with-natural-title-bar",
          "Build with a patch for title bar color inferred by theme (--HEAD is not supported)"
   option "with-modern-icon", "Using a modern style Emacs icon by @tpanum"
   option "with-spacemacs-icon", "Using the spacemacs Emacs icon by Nasser Alshammari"
@@ -131,6 +131,20 @@ class EmacsMac < Formula
 
     system "./autogen.sh"
     system "./configure", *args
+
+    # Disable aligned_alloc on Mojave. See issue: https://github.com/daviderestivo/homebrew-emacs-head/issues/15
+    if MacOS.version <= :mojave
+      ohai "Force disabling of aligned_alloc on macOS <= Mojave"
+      configure_h_filtered = File.read("src/config.h")
+                                .gsub("#define HAVE_ALIGNED_ALLOC 1", "#undef HAVE_ALIGNED_ALLOC")
+                                .gsub("#define HAVE_DECL_ALIGNED_ALLOC 1", "#undef HAVE_DECL_ALIGNED_ALLOC")
+                                .gsub("#define HAVE_ALLOCA 1", "#undef HAVE_ALLOCA")
+                                .gsub("#define HAVE_ALLOCA_H 1", "#undef HAVE_ALLOCA_H")
+      File.open("src/config.h", "w") do |f|
+        f.write(configure_h_filtered)
+      end
+    end
+
     system "make"
     system "make", "install"
     prefix.install "NEWS-mac"
